@@ -32,8 +32,8 @@ wr pages list <project_id> --sort total_traffic
 # Scrape all pending pages
 wr scrape-bulk <project_id>
 
-# Rewrite all scraped pages
-wr rewrite-bulk <project_id>
+# Rewrite all scraped pages (add --wisewand for premium quality)
+wr rewrite-bulk <project_id> --wisewand
 
 # Generate images
 wr image-bulk <project_id>
@@ -71,9 +71,8 @@ wr wp publish <page_id> --domain mysite.com --status draft
 | `wr scrape <page_id> [--type]` | 1 credit | Scrape a page |
 | `wr scrape-bulk <project_id> [--status] [--limit]` | 1/page | Scrape pages in bulk |
 | `wr enrich <project_id> [--sources]` | 0-10 | SEO enrichment |
-| `wr rewrite <page_id> [--instructions]` | 1 credit | Rewrite with GPT |
-| `wr rewrite-wisewand <page_id>` | 10 credits | Rewrite with Wisewand |
-| `wr rewrite-bulk <project_id> [--limit]` | 1/page | Bulk rewrite |
+| `wr rewrite <page_id> [--wisewand] [-w key]` | 1-10 credits | Rewrite (GPT default, Wisewand with `--wisewand`) |
+| `wr rewrite-bulk <project_id> [--wisewand] [--limit]` | 1-10/page | Bulk rewrite |
 | `wr image <page_id>` | 1 credit | Generate featured image |
 | `wr image-bulk <project_id> [--limit]` | 1/page | Bulk image generation |
 | `wr categorize <page_id> --domain=<wp>` | Free | Suggest category |
@@ -104,8 +103,8 @@ wr wp publish <page_id> --domain mysite.com --status draft
 | Haloscan enrichment | Free |
 | Majestic enrichment | 10 credits |
 | Scrape a page | 1 credit |
-| GPT rewrite | 1 credit |
-| Wisewand rewrite | 10 credits (1 with own key) |
+| Rewrite (GPT) | 1 credit |
+| Rewrite (Wisewand) | 10 credits (1 with own key) |
 | Image generation | 1 credit |
 | Categorization | Free |
 | WordPress publish | Free |
