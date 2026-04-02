@@ -27,7 +27,7 @@ Recommended workflow:
   2. wr enrich <project_id>          Enrich with SEO data (use haloscan,majestic for best results)
   3. wr pages <project_id> --sort total_traffic  Pick the best pages to resurrect
   4. wr scrape <page_id>             Scrape archived content (required before rewrite)
-  5. wr rewrite-wisewand <page_id>   Rewrite with Wisewand (RECOMMENDED over basic rewrite)
+  5. wr rewrite <page_id> --wisewand Rewrite content (add --wisewand for premium quality)
   6. wr image <page_id>              Generate featured image (always do this)
   7. wr wp publish <page_id> ...     Publish to WordPress`)
   .version('1.0.0')
