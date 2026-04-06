@@ -115,13 +115,14 @@ export function registerWordPressCommand(program: Command): void {
       const spinner = ora('Fetching categories...').start();
 
       try {
-        const { data } = await apiGet<Array<{ id: number; name: string; slug: string; count?: number }>>(
+        const { data } = await apiGet<{ categories: Array<{ id: number; name: string; slug: string; count?: number }> }>(
           `/wordpress/categories/${domain}`,
         );
 
         spinner.stop();
 
-        if (!data || data.length === 0) {
+        const categories = data?.categories || [];
+        if (categories.length === 0) {
           console.log(chalk.gray('\nNo categories found.\n'));
           return;
         }
@@ -129,7 +130,7 @@ export function registerWordPressCommand(program: Command): void {
         console.log(chalk.bold('\nWordPress Categories\n'));
 
         const headers = ['ID', 'Name', 'Slug', 'Posts'];
-        const rows = data.map((c) => [
+        const rows = categories.map((c) => [
           String(c.id),
           c.name,
           c.slug,
@@ -152,13 +153,14 @@ export function registerWordPressCommand(program: Command): void {
       const spinner = ora('Fetching authors...').start();
 
       try {
-        const { data } = await apiGet<Array<{ id: number; name: string; slug?: string }>>(
+        const { data } = await apiGet<{ authors: Array<{ id: number; name: string; slug?: string }> }>(
           `/wordpress/authors/${domain}`,
         );
 
         spinner.stop();
 
-        if (!data || data.length === 0) {
+        const authors = data?.authors || [];
+        if (authors.length === 0) {
           console.log(chalk.gray('\nNo authors found.\n'));
           return;
         }
@@ -166,7 +168,7 @@ export function registerWordPressCommand(program: Command): void {
         console.log(chalk.bold('\nWordPress Authors\n'));
 
         const headers = ['ID', 'Name', 'Slug'];
-        const rows = data.map((a) => [
+        const rows = authors.map((a) => [
           String(a.id),
           a.name,
           a.slug || '-',
