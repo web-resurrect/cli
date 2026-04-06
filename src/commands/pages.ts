@@ -35,7 +35,8 @@ export function registerPagesCommand(program: Command): void {
     .command('list')
     .description('List pages for a project')
     .argument('<project_id>', 'Project ID')
-    .option('-s, --status <status>', 'Filter by status (pending, scraped, rewritten, published)')
+    .option('-s, --status <status>', 'Filter by status (pending, scraped, empty, failed, rewritten, published)')
+    .option('--has-data <source>', 'Only pages with SEO data (haloscan, majestic, any)')
     .option('--sort <field>', 'Sort by field (created_at, total_traffic, backlinks_count, url, title)')
     .option('--order <dir>', 'Sort order (asc, desc)', 'desc')
     .option('-l, --limit <number>', 'Results per page', '50')
@@ -49,6 +50,7 @@ export function registerPagesCommand(program: Command): void {
           `/projects/${projectId}/pages`,
           {
             status: opts.status,
+            has_data: opts.hasData,
             sort: opts.sort,
             order: opts.order,
             limit: opts.limit,

@@ -13,8 +13,13 @@ import { registerImageCommand } from './commands/image.js';
 import { registerCategorizeCommand } from './commands/categorize.js';
 import { registerWordPressCommand } from './commands/wordpress.js';
 import { registerJobsCommand } from './commands/jobs.js';
+import { registerRedirectsCommand } from './commands/redirects.js';
 import { registerConfigCommand } from './commands/config.js';
 import { setRuntimeBaseUrl } from './client.js';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json');
 
 const program = new Command();
 
@@ -22,15 +27,52 @@ program
   .name('wr')
   .description(`Web Resurrect CLI - Resurrect expired domains from the command line.
 
-Recommended workflow:
-  1. wr projects create <domain>     Create project (auto-fetches archived URLs)
-  2. wr enrich <project_id>          Enrich with SEO data (use haloscan,majestic for best results)
-  3. wr pages <project_id> --sort total_traffic  Pick the best pages to resurrect
-  4. wr scrape <page_id>             Scrape archived content (required before rewrite)
-  5. wr rewrite <page_id> --wisewand Rewrite content (add --wisewand for premium quality)
-  6. wr image <page_id>              Generate featured image (always do this)
-  7. wr wp publish <page_id> ...     Publish to WordPress`)
-  .version('1.0.0')
+Workflow — from expired domain to live WordPress site:
+
+  1. CREATE PROJECT
+     wr projects create <domain>
+     Auto-fetches all archived URLs from the Wayback Machine.
+     Check the retrieved pages: wr pages list <project_id>
+
+  2. ENRICH WITH SEO DATA
+     wr enrich <project_id> -s haloscan,majestic
+     Always use both sources for the best results:
+     - Haloscan: traffic estimates and keyword data (free)
+     - Majestic: backlink data (10 credits)
+
+  3. PICK THE BEST PAGES TO RESURRECT
+     wr pages list <project_id> --sort total_traffic
+     Prioritize pages that have SEO data (traffic and/or backlinks).
+     Pages with no Haloscan/Majestic data are low-priority.
+
+  4. SCRAPE ARCHIVED CONTENT
+     wr scrape <page_id>              Single page (1 credit)
+     wr scrape-bulk <project_id>      All pending pages (1 credit/page)
+
+  5. REWRITE CONTENT
+     wr rewrite <page_id> --wisewand  Premium SEO rewrite (recommended, costs credits)
+     wr rewrite <page_id>             Basic rewrite (1 credit)
+     wr rewrite-bulk <project_id>     Bulk rewrite all scraped pages
+     Add -y to skip confirmation prompts (e.g. wr -y rewrite-bulk ...)
+
+  6. GENERATE FEATURED IMAGES
+     wr image <page_id>               Single page (1 credit)
+     wr image-bulk <project_id>       All rewritten pages (1 credit/page)
+     Always generate images — pages without them look incomplete.
+
+  7. CONNECT WORDPRESS
+     wr wp check <domain>             Check plugin or app-password connection
+     wr wp configure <domain>         Set up credentials if needed
+     The connection is required to fetch categories and authors.
+
+  8. CATEGORIZE ARTICLES
+     wr categorize <page_ids...> -d <domain>
+     AI-suggests WordPress categories based on page content (free, 1–50 pages).
+
+  9. PUBLISH TO WORDPRESS
+     wr wp publish <page_id> -d <domain> -a <author_id>
+     Use wr wp categories/authors <domain> to list available options.`)
+  .version(version)
   .enablePositionalOptions()
   .passThroughOptions()
   .option('-y, --yes', 'Skip all confirmation prompts (non-interactive mode)')
@@ -58,6 +100,7 @@ registerImageCommand(program);
 registerCategorizeCommand(program);
 registerWordPressCommand(program);
 registerJobsCommand(program);
+registerRedirectsCommand(program);
 registerConfigCommand(program);
 
 program.parseAsync(process.argv).catch((error) => {

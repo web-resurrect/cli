@@ -4,43 +4,59 @@ import ora from 'ora';
 import { apiPost } from '../client.js';
 import { printSuccess, printError } from '../utils.js';
 
+interface CategorySuggestion {
+  page_id: string;
+  suggested_category: {
+    id: number;
+    name: string;
+    slug: string;
+    confidence: number;
+  } | null;
+  message?: string;
+}
+
 export function registerCategorizeCommand(program: Command): void {
   program
     .command('categorize')
-    .description('Suggest a WordPress category for a page (free)')
-    .argument('<page_id>', 'Page ID')
+    .description('AI-suggest WordPress categories for 1–50 pages (free)')
+    .argument('<page_ids...>', 'Page IDs (1 to 50)')
     .requiredOption('-d, --domain <domain>', 'WordPress domain')
-    .action(async (pageId: string, opts) => {
-      const spinner = ora('Categorizing page...').start();
+    .action(async (pageIds: string[], opts) => {
+      if (pageIds.length > 50) {
+        printError('Maximum 50 pages per batch');
+        process.exit(1);
+      }
+
+      const spinner = ora(`Categorizing ${pageIds.length} page(s)...`).start();
 
       try {
         const { data } = await apiPost<{
-          page_id: string;
-          suggested_category: {
-            id: number;
-            name: string;
-            slug: string;
-            confidence: number;
-          } | null;
-        }>('/categorize', {
-          page_id: pageId,
+          wordpress_domain: string;
+          total: number;
+          categorized: number;
+          suggestions: CategorySuggestion[];
+        }>('/categorize/bulk', {
+          page_ids: pageIds,
           wordpress_domain: opts.domain,
         });
 
         spinner.stop();
 
-        if (data.suggested_category) {
-          printSuccess('Category suggested:');
-          console.log(`  Name:       ${chalk.cyan(data.suggested_category.name)}`);
-          console.log(`  Slug:       ${data.suggested_category.slug}`);
-          console.log(`  ID:         ${data.suggested_category.id}`);
-          console.log(
-            `  Confidence: ${chalk.green(
-              `${Math.round(data.suggested_category.confidence * 100)}%`,
-            )}`,
-          );
-        } else {
-          console.log(chalk.yellow('\nNo category suggestion available.'));
+        printSuccess(`${data.categorized}/${data.total} pages categorized`);
+        console.log();
+
+        for (const s of data.suggestions) {
+          const pageShort = s.page_id.slice(0, 8);
+          if (s.suggested_category) {
+            const confidence = Math.round(s.suggested_category.confidence * 100);
+            console.log(
+              `  ${chalk.gray(pageShort)}  ${chalk.cyan(s.suggested_category.name)} ${chalk.gray(`(${s.suggested_category.slug}, ${confidence}%)`)}`,
+            );
+          } else {
+            console.log(
+              `  ${chalk.gray(pageShort)}  ${chalk.yellow('No suggestion')}${s.message ? chalk.gray(` — ${s.message}`) : ''}`,
+            );
+          }
         }
         console.log();
       } catch (error) {

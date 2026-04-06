@@ -96,7 +96,7 @@ export function registerRewriteCommand(program: Command): void {
         const creditsPer = useWisewand ? (wisewandKey ? 1 : 10) : 1;
         const totalCredits = count * creditsPer;
 
-        const modeLabel = useWisewand ? 'Wisewand' : 'GPT';
+        const modeLabel = useWisewand ? 'premium Wisewand' : 'basic';
         const yes = await confirm(
           `Rewrite ${chalk.bold(String(count))} pages with ${modeLabel}? Cost: ${chalk.yellow(String(totalCredits))} credits. Continue?`,
         );

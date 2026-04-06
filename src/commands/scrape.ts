@@ -47,18 +47,19 @@ export function registerScrapeCommand(program: Command): void {
 
   program
     .command('scrape-bulk')
-    .description('Scrape all pending pages in a project (1 credit/page). Required before rewriting or image generation.')
+    .description('Scrape all pending pages in a project (1 credit/page). Use --has-data to target only pages with SEO data.')
     .argument('<project_id>', 'Project ID')
     .option('-s, --status <status>', 'Filter pages by status', 'pending')
     .option('-l, --limit <number>', 'Max pages to scrape', '50')
     .option('-t, --type <type>', 'Content type', 'article')
+    .option('--has-data <source>', 'Only pages with SEO data (haloscan, majestic, any)')
     .action(async (projectId: string, opts) => {
       const spinner = ora('Fetching pages...').start();
 
       try {
         const { data: pages } = await apiGet<Page[]>(
           `/projects/${projectId}/pages`,
-          { status: opts.status, limit: opts.limit },
+          { status: opts.status, limit: opts.limit, has_data: opts.hasData },
         );
 
         if (!pages || pages.length === 0) {

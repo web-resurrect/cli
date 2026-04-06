@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { apiPost } from '../client.js';
-import { printError, printJobStarted, printWarning, confirm } from '../utils.js';
+import { printError, printJobStarted } from '../utils.js';
 
 export function registerEnrichCommand(program: Command): void {
   program
@@ -16,17 +16,6 @@ export function registerEnrichCommand(program: Command): void {
     )
     .action(async (projectId: string, opts) => {
       const sources = opts.sources.split(',').map((s: string) => s.trim());
-
-      const hasMajestic = sources.includes('majestic');
-
-      if (hasMajestic) {
-        printWarning('Majestic enrichment costs 10 credits.');
-        const yes = await confirm('Continue?');
-        if (!yes) {
-          console.log(chalk.gray('Cancelled.'));
-          return;
-        }
-      }
 
       const spinner = ora(
         `Enriching project with ${sources.join(', ')}...`,
