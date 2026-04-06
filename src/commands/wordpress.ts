@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { apiGet, apiPost } from '../client.js';
+import { apiGet, apiPost, apiPut } from '../client.js';
 import { formatTable, printSuccess, printError, printJobStarted, confirm, promptInput } from '../utils.js';
 
 export function registerWordPressCommand(program: Command): void {
@@ -183,6 +183,97 @@ export function registerWordPressCommand(program: Command): void {
       }
     });
 
+  wp.command('mapping')
+    .description('Show current category-to-author mapping for a WordPress domain')
+    .argument('<domain>', 'WordPress domain')
+    .action(async (domain: string) => {
+      const spinner = ora('Fetching mapping...').start();
+
+      try {
+        const { data } = await apiGet<{
+          mappings: Array<{ category_id: number; author_id: number }>;
+          default_author_id: number | null;
+          default_category_id: number | null;
+        }>(`/wordpress/mapping/${domain}`);
+
+        spinner.stop();
+
+        if (!data) {
+          console.log(chalk.gray('\nNo mapping configured.\n'));
+          return;
+        }
+
+        console.log(chalk.bold('\nCategory-Author Mapping\n'));
+
+        const mappings = data.mappings || [];
+        if (mappings.length > 0) {
+          const headers = ['Category ID', 'Author ID'];
+          const rows = mappings.map((m) => [String(m.category_id), String(m.author_id)]);
+          console.log(formatTable(headers, rows));
+        } else {
+          console.log(chalk.gray('  No category-author mappings configured.'));
+        }
+
+        console.log(`\n  Default author: ${data.default_author_id ?? chalk.gray('none')}`);
+        console.log(`  Default category: ${data.default_category_id ?? chalk.gray('none')}\n`);
+      } catch (error) {
+        spinner.fail('Failed to fetch mapping');
+        printError(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
+  wp.command('set-mapping')
+    .description(
+      `Configure category-to-author mapping. MUST be done before categorizing pages.
+
+Example: wr wp set-mapping example.com --map 5:3 --map 7:2 --default-author 3
+This maps category 5 → author 3, category 7 → author 2, default author = 3.`,
+    )
+    .argument('<domain>', 'WordPress domain')
+    .option('-m, --map <mapping...>', 'Category-author pairs as category_id:author_id (e.g. 5:3 7:2)')
+    .option('--default-author <id>', 'Default author ID')
+    .option('--default-category <id>', 'Default category ID')
+    .action(async (domain: string, opts) => {
+      const mappings: Array<{ category_id: number; author_id: number }> = [];
+
+      if (opts.map) {
+        for (const pair of opts.map) {
+          const [catId, authId] = pair.split(':').map(Number);
+          if (!catId || !authId) {
+            printError(`Invalid mapping format: ${pair}. Use category_id:author_id (e.g. 5:3)`);
+            process.exit(1);
+          }
+          mappings.push({ category_id: catId, author_id: authId });
+        }
+      }
+
+      const spinner = ora('Saving mapping...').start();
+
+      try {
+        const body: Record<string, unknown> = { mappings };
+        if (opts.defaultAuthor) body.default_author_id = parseInt(opts.defaultAuthor, 10);
+        if (opts.defaultCategory) body.default_category_id = parseInt(opts.defaultCategory, 10);
+
+        await apiPut(`/wordpress/mapping/${domain}`, body);
+
+        spinner.stop();
+        console.log(chalk.green(`\n✔ Mapping saved for ${chalk.bold(domain)}\n`));
+        if (mappings.length > 0) {
+          mappings.forEach((m) => {
+            console.log(`  Category ${chalk.cyan(String(m.category_id))} → Author ${chalk.yellow(String(m.author_id))}`);
+          });
+        }
+        if (opts.defaultAuthor) console.log(`  Default author: ${chalk.yellow(opts.defaultAuthor)}`);
+        if (opts.defaultCategory) console.log(`  Default category: ${chalk.cyan(opts.defaultCategory)}`);
+        console.log();
+      } catch (error) {
+        spinner.fail('Failed to save mapping');
+        printError(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
   wp.command('publish')
     .description('Publish a page to WordPress (free)')
     .argument('<page_id>', 'Page ID')
@@ -221,6 +312,53 @@ export function registerWordPressCommand(program: Command): void {
         spinner.stop();
         printJobStarted(data.job_id);
         console.log();
+      } catch (error) {
+        printError(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
+  wp.command('publish-bulk')
+    .description('Publish multiple pages to WordPress at once (free). Author auto-resolved from category-author mapping.')
+    .argument('<page_ids...>', 'Page IDs to publish')
+    .requiredOption('-d, --domain <domain>', 'WordPress domain')
+    .option('-c, --category <id>', 'Category ID (overrides page categories)')
+    .option('-a, --author <id>', 'Author ID (overrides mapping)')
+    .option('--status <status>', 'Post status (draft, publish)', 'draft')
+    .option('--type <type>', 'Post type (post, page)', 'post')
+    .option('--no-rewritten', 'Use original content instead of rewritten')
+    .option('--remove-links', 'Remove links from content')
+    .action(async (pageIds: string[], opts) => {
+      try {
+        const yes = await confirm(
+          `Publish ${chalk.bold(String(pageIds.length))} pages to ${chalk.cyan(opts.domain)} as ${chalk.yellow(opts.status)}?`,
+        );
+        if (!yes) {
+          console.log(chalk.gray('Cancelled.'));
+          return;
+        }
+
+        const spinner = ora(`Publishing ${pageIds.length} pages to WordPress...`).start();
+
+        const body: Record<string, unknown> = {
+          page_ids: pageIds,
+          wordpress_domain: opts.domain,
+          status: opts.status,
+          post_type: opts.type,
+          use_rewritten_content: opts.rewritten !== false,
+          remove_links: opts.removeLinks || false,
+        };
+        if (opts.category) body.category_id = parseInt(opts.category, 10);
+        if (opts.author) body.author_id = parseInt(opts.author, 10);
+
+        const { data } = await apiPost<{ job_id: string; total_items: number }>(
+          '/wordpress/publish/bulk',
+          body,
+        );
+
+        spinner.stop();
+        printJobStarted(data.job_id);
+        console.log(chalk.gray(`  ${data.total_items} pages queued for publishing\n`));
       } catch (error) {
         printError(error instanceof Error ? error.message : String(error));
         process.exit(1);

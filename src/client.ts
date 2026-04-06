@@ -130,6 +130,20 @@ export async function apiPost<T = unknown>(
   return apiRequest<T>('POST', path, body);
 }
 
+export async function apiPut<T = unknown>(
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<ApiResponse<T>> {
+  return apiRequest<T>('PUT', path, body);
+}
+
+export async function apiPatch<T = unknown>(
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<ApiResponse<T>> {
+  return apiRequest<T>('PATCH', path, body);
+}
+
 export async function apiDelete<T = unknown>(
   path: string,
 ): Promise<ApiResponse<T>> {

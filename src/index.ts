@@ -65,13 +65,24 @@ Workflow — from expired domain to live WordPress site:
      wr wp configure <domain>         Set up credentials if needed
      The connection is required to fetch categories and authors.
 
-  8. CATEGORIZE ARTICLES
+  8. MAP CATEGORIES TO AUTHORS (must be done before categorizing!)
+     wr wp categories <domain>        List available categories
+     wr wp authors <domain>           List available authors
+     wr wp set-mapping <domain> --map 5:3 --map 7:2 --default-author 3
+     Maps each category to its author for auto-assignment at publish.
+
+  9. CATEGORIZE ARTICLES
      wr categorize <page_ids...> -d <domain>
      AI-suggests WordPress categories based on page content (free, 1–50 pages).
+     Saves the category to each page in the database.
 
-  9. PUBLISH TO WORDPRESS
-     wr wp publish <page_id> -d <domain> -a <author_id>
-     Use wr wp categories/authors <domain> to list available options.`)
+ 10. PUBLISH TO WORDPRESS
+     wr wp publish <page_id> -d <domain>
+     Author is auto-resolved from category-author mapping. No need for -a.
+
+ 11. PUSH REDIRECTS
+     wr redirects push <project_id> -d <domain>
+     Published pages served at original URLs, rest → homepage.`)
   .version(version)
   .enablePositionalOptions()
   .passThroughOptions()
