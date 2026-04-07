@@ -107,7 +107,7 @@ export function registerPagesCommand(program: Command): void {
       const spinner = ora('Fetching page details...').start();
 
       try {
-        const { data } = await apiGet<Page>(`/pages/${id}`);
+        const { data } = await apiGet<any>(`/pages/${id}`);
         spinner.stop();
 
         console.log(chalk.bold('\nPage Details\n'));
@@ -116,9 +116,15 @@ export function registerPagesCommand(program: Command): void {
         console.log(`  Archive:   ${chalk.gray(data.archive_url || '-')}`);
         console.log(`  Title:     ${data.title || '-'}`);
         console.log(`  Status:    ${statusColor(data.status)}`);
-        console.log(`  Scraped:   ${data.is_scraped ? chalk.green('Yes') : chalk.gray('No')}`);
-        console.log(`  Rewritten: ${data.is_rewritten ? chalk.green('Yes') : chalk.gray('No')}`);
-        console.log(`  Published: ${data.posted_to_wordpress ? chalk.green('Yes') : chalk.gray('No')}`);
+        console.log(`  Scraped:   ${data.scrape?.is_scraped ? chalk.green('Yes') : chalk.gray('No')}`);
+        console.log(`  Rewritten: ${data.rewrite?.is_rewritten ? chalk.green('Yes') : chalk.gray('No')}`);
+        console.log(`  Published: ${data.wordpress?.posted ? chalk.green('Yes') : chalk.gray('No')}`);
+
+        const catName = data.wordpress?.category_name;
+        const catId = data.wordpress?.category_id;
+        if (catName || catId) {
+          console.log(`  Category:  ${chalk.cyan(catName || String(catId))}`);
+        }
 
         if (data.seo) {
           console.log(chalk.bold('\n  SEO:'));
