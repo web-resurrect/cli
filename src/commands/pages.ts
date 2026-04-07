@@ -25,6 +25,8 @@ interface Page {
     backlinks: number | null;
   };
   featured_image_url: string | null;
+  wordpress_category_id: number | null;
+  wordpress_category_name: string | null;
   created_at: string;
 }
 
@@ -68,11 +70,12 @@ export function registerPagesCommand(program: Command): void {
 
         console.log(chalk.bold('\nPages\n'));
 
-        const headers = ['ID', 'URL', 'Status', 'Traffic', 'KW', 'BL', 'Title'];
+        const headers = ['ID', 'URL', 'Status', 'Cat', 'Traffic', 'KW', 'BL', 'Title'];
         const rows = data.map((p) => [
           p.id,
           truncate(p.url, 40),
           statusColor(p.status),
+          p.wordpress_category_name || (p.wordpress_category_id != null ? String(p.wordpress_category_id) : '-'),
           p.seo?.traffic != null ? String(p.seo.traffic) : '-',
           p.seo?.keywords != null ? String(p.seo.keywords) : '-',
           p.seo?.backlinks != null ? String(p.seo.backlinks) : '-',

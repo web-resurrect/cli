@@ -1,6 +1,6 @@
 {
   "name": "@web-resurrect/cli",
-  "version": "1.0.11",
+  "version": "1.0.13",
   "description": "CLI tool for the Web Resurrect API",
   "type": "module",
   "bin": {
