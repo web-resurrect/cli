@@ -319,9 +319,27 @@ This maps category 5 → author 3, category 7 → author 2, default author = 3.`
     });
 
   wp.command('publish-bulk')
-    .description('Publish multiple pages to WordPress at once (free). Author auto-resolved from category-author mapping.')
-    .argument('<page_ids...>', 'Page IDs to publish')
+    .description(
+      `Publish multiple pages to WordPress at once (free).
+Author auto-resolved from category-author mapping.
+
+Two modes:
+  With --project: fetches all pages matching --filter (default: rewritten)
+    wr wp publish-bulk -p <project_id> -d example.com
+    wr wp publish-bulk -p <project_id> -d example.com --filter scraped
+
+  With page IDs: publishes specific pages
+    wr wp publish-bulk <id1> <id2> ... -d example.com`,
+    )
+    .argument('[page_ids...]', 'Page IDs to publish (optional if --project is used)')
     .requiredOption('-d, --domain <domain>', 'WordPress domain')
+    .option('-p, --project <id>', 'Project ID (fetches all matching pages)')
+    .option(
+      '--filter <status>',
+      'Filter pages by status when using --project (scraped, rewritten)',
+      'rewritten',
+    )
+    .option('-l, --limit <number>', 'Max pages when using --project', '500')
     .option('-c, --category <id>', 'Category ID (overrides page categories)')
     .option('-a, --author <id>', 'Author ID (overrides mapping)')
     .option('--status <status>', 'Post status (draft, publish)', 'draft')
@@ -330,18 +348,53 @@ This maps category 5 → author 3, category 7 → author 2, default author = 3.`
     .option('--remove-links', 'Remove links from content')
     .action(async (pageIds: string[], opts) => {
       try {
+        let finalPageIds = pageIds;
+
+        // If --project, fetch page IDs from the project
+        if (opts.project) {
+          const spinner = ora('Fetching pages...').start();
+          const allPages: Array<{ id: string }> = [];
+          let page = 1;
+          const perPage = 50;
+          const maxPages = parseInt(opts.limit, 10);
+
+          while (allPages.length < maxPages) {
+            const { data: pages, pagination } = await apiGet<Array<{ id: string }>>(
+              `/projects/${opts.project}/pages`,
+              { status: opts.filter, limit: perPage, page },
+            );
+            if (!pages || pages.length === 0) break;
+            allPages.push(...pages);
+            if (!pagination?.hasMore) break;
+            page++;
+          }
+
+          spinner.stop();
+          finalPageIds = allPages.slice(0, maxPages).map((p) => p.id);
+
+          if (finalPageIds.length === 0) {
+            console.log(chalk.gray(`\nNo pages with status "${opts.filter}" found.\n`));
+            return;
+          }
+        }
+
+        if (finalPageIds.length === 0) {
+          printError('Provide page IDs as arguments or use --project <id>');
+          process.exit(1);
+        }
+
         const yes = await confirm(
-          `Publish ${chalk.bold(String(pageIds.length))} pages to ${chalk.cyan(opts.domain)} as ${chalk.yellow(opts.status)}?`,
+          `Publish ${chalk.bold(String(finalPageIds.length))} pages to ${chalk.cyan(opts.domain)} as ${chalk.yellow(opts.status)}?`,
         );
         if (!yes) {
           console.log(chalk.gray('Cancelled.'));
           return;
         }
 
-        const spinner = ora(`Publishing ${pageIds.length} pages to WordPress...`).start();
+        const spinner = ora(`Publishing ${finalPageIds.length} pages to WordPress...`).start();
 
         const body: Record<string, unknown> = {
-          page_ids: pageIds,
+          page_ids: finalPageIds,
           wordpress_domain: opts.domain,
           status: opts.status,
           post_type: opts.type,
